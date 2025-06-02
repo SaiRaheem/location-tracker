@@ -1,96 +1,85 @@
+
+let map, marker;
 const statusDiv = document.getElementById("status");
 const userId = prompt("Enter your user ID:") || "unknown";
 
-function sendLocationToServer(latitude, longitude) {
+function initMap() {
+  // Will initialize on user's location
+}
+
+function updateMap(lat, lng) {
+  const latLng = { lat, lng };
+
+  if (!map) {
+    map = new google.maps.Map(document.getElementById("map"), {
+      zoom: 15,
+      center: latLng,
+      mapTypeId: 'roadmap'
+    });
+
+    marker = new google.maps.Marker({
+      position: latLng,
+      map,
+      title: "📍 You are here",
+      animation: google.maps.Animation.DROP
+    });
+  } else {
+    map.setCenter(latLng);
+    marker.setPosition(latLng);
+  }
+}
+
+function updateStatus(position) {
+  const {
+    latitude,
+    longitude,
+    altitude,
+    speed,
+    heading,
+    accuracy
+  } = position.coords;
+
+  const timestamp = new Date(position.timestamp).toLocaleString();
+  const speedKmh = speed != null ? (speed * 3.6).toFixed(2) : "Not available";
+
+  const info = `
+    📍 Latitude: ${latitude.toFixed(6)}<br>
+    📍 Longitude: ${longitude.toFixed(6)}<br>
+    🎯 Accuracy: ${accuracy} meters<br>
+    ⬆️ Altitude: ${altitude != null ? altitude + " m" : "Not available"}<br>
+    ⚡ Speed: ${speedKmh} km/h<br>
+    🧭 Heading: ${heading != null ? heading + "°" : "Not available"}<br>
+    ⏱️ Time: ${timestamp}
+  `;
+
+  statusDiv.style.opacity = 0;
+  setTimeout(() => {
+    statusDiv.innerHTML = info;
+    statusDiv.style.opacity = 1;
+  }, 300);
+
+  updateMap(latitude, longitude);
+  sendLocationToServer(latitude, longitude);
+}
+
+function sendLocationToServer(lat, lng) {
   fetch("/api/location", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ latitude, longitude, userId })
-  })
-  .then(res => {
-    if (res.ok) {
-      // Optional: you can update status or just keep silent here
-      // statusDiv.textContent = "📍 Location sent successfully!";
-    } else {
-      statusDiv.textContent = "❌ Failed to send location.";
-    }
-  })
-  .catch(() => {
+    body: JSON.stringify({ latitude: lat, longitude: lng, userId })
+  }).catch(() => {
     statusDiv.textContent = "❌ Error sending location.";
   });
 }
 
-function createPulseIcon() {
-  const div = document.createElement('div');
-  div.className = 'pulse-marker';
-  return L.divIcon({
-    className: '', // Remove default leaflet styles for icon container
-    html: div.outerHTML,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-    popupAnchor: [0, -18],
-  });
-}
-
-function showMap(latitude, longitude) {
-  if (!window.map) {
-    window.map = L.map("map").setView([latitude, longitude], 13);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(window.map);
-
-    window.marker = L.marker([latitude, longitude], { icon: createPulseIcon() })
-      .addTo(window.map)
-      .bindPopup("📍 You are here")
-      .openPopup();
-  } else {
-    window.map.setView([latitude, longitude], 13);
-    window.marker.setLatLng([latitude, longitude]);
-  }
-}
-
 if ("geolocation" in navigator) {
   navigator.geolocation.watchPosition(
-    (position) => {
-      const {
-        latitude,
-        longitude,
-        altitude,
-        speed,
-        heading,
-        accuracy
-      } = position.coords;
-
-      const timestamp = new Date(position.timestamp).toLocaleString();
-
-      const speedKmh = speed != null ? (speed * 3.6).toFixed(2) : "Not available";
-
-      const info = `
-        📍 Latitude: ${latitude.toFixed(6)}<br>
-        📍 Longitude: ${longitude.toFixed(6)}<br>
-        🎯 Accuracy: ${accuracy} meters<br>
-        ⬆️ Altitude: ${altitude != null ? altitude + " m" : "Not available"}<br>
-        ⚡ Speed: ${speedKmh} km/h<br>
-        🧭 Heading: ${heading != null ? heading + "°" : "Not available"}<br>
-        ⏱️ Time: ${timestamp}
-      `;
-
-      // Animate the status update fade out/in
-      statusDiv.style.opacity = 0;
-      setTimeout(() => {
-        statusDiv.innerHTML = info;
-        statusDiv.style.opacity = 1;
-      }, 300);
-
-      sendLocationToServer(latitude, longitude);
-
-      showMap(latitude, longitude);
-    },
-    (error) => {
-      console.error(error);
-      statusDiv.textContent = "❌ Error getting location: " + error.message;
+    updateStatus,
+    (err) => {
+      console.error(err);
+      statusDiv.textContent = "❌ Error getting location: " + err.message;
     },
     {
       enableHighAccuracy: true,
@@ -99,5 +88,5 @@ if ("geolocation" in navigator) {
     }
   );
 } else {
-  statusDiv.textContent = "❌ Geolocation is not supported by your browser.";
+  statusDiv.textContent = "❌ Geolocation not supported.";
 }
