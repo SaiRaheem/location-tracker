@@ -1,10 +1,5 @@
-// public/script.js
-
 const statusDiv = document.getElementById("status");
-
 const userId = prompt("Enter your user ID:") || "unknown";
-const spinner = document.getElementById("spinner");
-
 
 function sendLocationToServer(latitude, longitude) {
   fetch("/api/location", {
@@ -16,7 +11,8 @@ function sendLocationToServer(latitude, longitude) {
   })
   .then(res => {
     if (res.ok) {
-      statusDiv.textContent = "📍 Location sent successfully!";
+      // Optional: you can update status or just keep silent here
+      // statusDiv.textContent = "📍 Location sent successfully!";
     } else {
       statusDiv.textContent = "❌ Failed to send location.";
     }
@@ -26,33 +22,80 @@ function sendLocationToServer(latitude, longitude) {
   });
 }
 
-function showMap(latitude, longitude) {
-  const map = L.map("map").setView([latitude, longitude], 13);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
-
-  const marker = L.marker([latitude, longitude], {
-    bounceOnAdd: true,
-    bounceOnAddOptions: { duration: 500, height: 100 },
-    bounceOnAddCallback: function () {}
+function createPulseIcon() {
+  const div = document.createElement('div');
+  div.className = 'pulse-marker';
+  return L.divIcon({
+    className: '', // Remove default leaflet styles for icon container
+    html: div.outerHTML,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+    popupAnchor: [0, -18],
   });
-
-  marker.addTo(map).bindPopup("📍 You are here").openPopup();
 }
 
+function showMap(latitude, longitude) {
+  if (!window.map) {
+    window.map = L.map("map").setView([latitude, longitude], 13);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(window.map);
+
+    window.marker = L.marker([latitude, longitude], { icon: createPulseIcon() })
+      .addTo(window.map)
+      .bindPopup("📍 You are here")
+      .openPopup();
+  } else {
+    window.map.setView([latitude, longitude], 13);
+    window.marker.setLatLng([latitude, longitude]);
+  }
+}
 
 if ("geolocation" in navigator) {
-  navigator.geolocation.getCurrentPosition(
+  navigator.geolocation.watchPosition(
     (position) => {
-      const { latitude, longitude } = position.coords;
-      statusDiv.textContent = `Latitude: ${latitude}, Longitude: ${longitude}`;
+      const {
+        latitude,
+        longitude,
+        altitude,
+        speed,
+        heading,
+        accuracy
+      } = position.coords;
+
+      const timestamp = new Date(position.timestamp).toLocaleString();
+
+      const speedKmh = speed != null ? (speed * 3.6).toFixed(2) : "Not available";
+
+      const info = `
+        📍 Latitude: ${latitude.toFixed(6)}<br>
+        📍 Longitude: ${longitude.toFixed(6)}<br>
+        🎯 Accuracy: ${accuracy} meters<br>
+        ⬆️ Altitude: ${altitude != null ? altitude + " m" : "Not available"}<br>
+        ⚡ Speed: ${speedKmh} km/h<br>
+        🧭 Heading: ${heading != null ? heading + "°" : "Not available"}<br>
+        ⏱️ Time: ${timestamp}
+      `;
+
+      // Animate the status update fade out/in
+      statusDiv.style.opacity = 0;
+      setTimeout(() => {
+        statusDiv.innerHTML = info;
+        statusDiv.style.opacity = 1;
+      }, 300);
+
       sendLocationToServer(latitude, longitude);
+
       showMap(latitude, longitude);
     },
     (error) => {
       console.error(error);
       statusDiv.textContent = "❌ Error getting location: " + error.message;
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 10000,
+      timeout: 5000
     }
   );
 } else {
