@@ -1,68 +1,172 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Current Location</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>📍 Current Location Tracker</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<style>
+  /* Reset and base */
   body {
-    font-family: 'Segoe UI', sans-serif;
-    background: linear-gradient(135deg, #e0f7fa, #fff);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #e0f7fa, #ffffff);
     color: #333;
-    text-align: center;
     margin: 0;
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  main {
+    flex-grow: 1;
+    max-width: 900px;
+    margin: 30px auto 60px;
+    width: 90%;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+    padding: 30px 40px 40px;
   }
 
   h1 {
-    margin-top: 20px;
+    font-size: 2.8rem;
     color: #00796b;
-    font-size: 2.5rem;
-    animation: fadeIn 1s ease-in;
+    margin-bottom: 0.2em;
+    letter-spacing: 2px;
+    text-align: center;
+    animation: fadeInDown 1s ease forwards;
+  }
+
+  /* Live tracking badge */
+  #liveBadge {
+    font-weight: 700;
+    color: #e53935;
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+    animation: blink 1.5s infinite;
   }
 
   #status {
-    margin: 20px;
-    font-size: 1.2rem;
-    font-weight: 500;
+    font-size: 1.25rem;
     color: #004d40;
-    animation: pulse 2s infinite;
+    background: #e0f2f1;
+    padding: 18px 22px;
+    border-radius: 12px;
+    box-shadow: inset 0 2px 8px rgba(0, 77, 64, 0.2);
+    line-height: 1.6;
+    font-weight: 600;
+    user-select: none;
+    animation: fadeIn 1s ease forwards;
+    min-height: 140px;
   }
 
   #map {
-    height: 400px;
-    width: 90%;
-    max-width: 800px;
-    margin: 0 auto 40px;
-    border-radius: 15px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-    animation: slideUp 1s ease-in-out;
+    margin-top: 28px;
+    height: 450px;
+    width: 100%;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    animation: slideUpFade 1.2s ease forwards;
   }
 
-  @keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.7; }
-    100% { opacity: 1; }
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 14px 0;
+    background: #00796b;
+    color: #fff;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    user-select: none;
+    font-size: 0.9rem;
+  }
+
+  /* Animations */
+  @keyframes fadeInDown {
+    0% {
+      opacity: 0;
+      transform: translateY(-25px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+    0% {opacity: 0;}
+    100% {opacity: 1;}
   }
 
-  @keyframes slideUp {
-    from { transform: translateY(50px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+  @keyframes slideUpFade {
+    0% {
+      opacity: 0;
+      transform: translateY(40px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Leaflet popup custom pulsing icon */
+  .leaflet-popup-content-wrapper {
+    background: #004d40cc !important;
+    color: #e0f7fa !important;
+    font-weight: 700 !important;
+    font-size: 1.1rem !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 15px #004d4080 !important;
+    padding: 10px 18px !important;
+  }
+
+  .leaflet-popup-tip {
+    background: #004d40cc !important;
+  }
+
+  /* Pulsing circle marker */
+  .pulse-marker {
+    width: 18px;
+    height: 18px;
+    background: #e53935;
+    border-radius: 50%;
+    position: relative;
+    box-shadow: 0 0 8px #e5393577;
+    animation: pulseMarker 1.5s infinite ease-in-out;
+    border: 3px solid #fff;
+  }
+
+  @keyframes pulseMarker {
+    0% {
+      box-shadow: 0 0 6px 4px #e5393577;
+      transform: scale(1);
+    }
+    50% {
+      box-shadow: 0 0 14px 8px #e5393533;
+      transform: scale(1.3);
+    }
+    100% {
+      box-shadow: 0 0 6px 4px #e5393577;
+      transform: scale(1);
+    }
   }
 </style>
-
 </head>
 <body>
-  <h1>📍 Current Location</h1>
-  <div class="spinner" id="spinner"></div>
-
-  <div id="status">Getting location...</div>
-  <div id="map"></div>
+  <main>
+    <h1>📍 Current Location Tracker</h1>
+    <div id="liveBadge">🔴 Live Tracking</div>
+    <div id="status">Getting location...</div>
+    <div id="map"></div>
+  </main>
+  <footer>© 2025 Your Location Tracker • Built with Leaflet & Geolocation API</footer>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="script.js"></script>
