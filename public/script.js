@@ -3,6 +3,8 @@
 const statusDiv = document.getElementById("status");
 
 const userId = prompt("Enter your user ID:") || "unknown";
+const spinner = document.getElementById("spinner");
+
 
 function sendLocationToServer(latitude, longitude) {
   fetch("/api/location", {
@@ -29,11 +31,16 @@ function showMap(latitude, longitude) {
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
-  L.marker([latitude, longitude])
-    .addTo(map)
-    .bindPopup("You are here")
-    .openPopup();
+
+  const marker = L.marker([latitude, longitude], {
+    bounceOnAdd: true,
+    bounceOnAddOptions: { duration: 500, height: 100 },
+    bounceOnAddCallback: function () {}
+  });
+
+  marker.addTo(map).bindPopup("📍 You are here").openPopup();
 }
+
 
 if ("geolocation" in navigator) {
   navigator.geolocation.getCurrentPosition(
